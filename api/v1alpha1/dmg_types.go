@@ -30,12 +30,18 @@ type DmgSpec struct {
 
 	// Foo is an example field of Dmg. Edit dmg_types.go to remove/update
 	Foo string `json:"foo,omitempty"`
+
+	// Cmd is the "dmg" command to execute
+	Cmd string `json:"cmd,omitempty"`
 }
 
 // DmgStatus defines the observed state of Dmg
 type DmgStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	// ExitStatus contains the dmg command's process exit status
+	ExitStatus string `json:"exitStatus"`
 }
 
 //+kubebuilder:object:root=true

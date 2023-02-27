@@ -9,4 +9,5 @@ metadata:
     app.kubernetes.io/created-by: olivetree
   name: dmg-sample
 spec:
-  # TODO(user): Add fields here
+  cmd: ls /hello_world
+

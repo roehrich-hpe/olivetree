@@ -1,0 +1,59 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.11.1
+  creationTimestamp: null
+  name: dmgs.daos.hpe.com
+spec:
+  group: daos.hpe.com
+  names:
+    kind: Dmg
+    listKind: DmgList
+    plural: dmgs
+    singular: dmg
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Dmg is the Schema for the dmgs API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: DmgSpec defines the desired state of Dmg
+            properties:
+              cmd:
+                description: Cmd is the "dmg" command to execute
+                type: string
+              foo:
+                description: Foo is an example field of Dmg. Edit dmg_types.go to
+                  remove/update
+                type: string
+            type: object
+          status:
+            description: DmgStatus defines the observed state of Dmg
+            properties:
+              exitStatus:
+                description: ExitStatus contains the dmg command's process exit status
+                type: string
+            required:
+            - exitStatus
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
