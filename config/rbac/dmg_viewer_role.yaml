@@ -1,0 +1,27 @@
+# permissions for end users to view dmgs.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: dmg-viewer-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: olivetree
+    app.kubernetes.io/part-of: olivetree
+    app.kubernetes.io/managed-by: kustomize
+  name: dmg-viewer-role
+rules:
+- apiGroups:
+  - daos.hpe.com
+  resources:
+  - dmgs
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - daos.hpe.com
+  resources:
+  - dmgs/status
+  verbs:
+  - get

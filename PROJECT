@@ -7,4 +7,14 @@ layout:
 - go.kubebuilder.io/v4-alpha
 projectName: olivetree
 repo: github.com/roehrich-hpe/olivetree
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: hpe.com
+  group: daos
+  kind: Dmg
+  path: github.com/roehrich-hpe/olivetree/api/v1alpha1
+  version: v1alpha1
 version: "3"
