@@ -35,6 +35,10 @@ spec:
           spec:
             description: DmgSpec defines the desired state of Dmg
             properties:
+              cancel:
+                default: false
+                description: Set to true if the command operation should be canceled.
+                type: boolean
               cmd:
                 description: Cmd is the "dmg" command to execute
                 type: string
@@ -49,8 +53,19 @@ spec:
               exitStatus:
                 description: ExitStatus contains the dmg command's process exit status
                 type: string
+              output:
+                description: Output contains any output from the command
+                type: string
+              status:
+                description: Status is the state of the dmg command
+                enum:
+                - Running
+                - Finished
+                type: string
             required:
             - exitStatus
+            - output
+            - status
             type: object
         type: object
     served: true

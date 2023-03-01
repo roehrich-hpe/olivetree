@@ -18,17 +18,22 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"os/exec"
 	"strings"
 	"sync"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	daosv1alpha1 "github.com/roehrich-hpe/olivetree/api/v1alpha1"
 )
+
+const finalizer = "dmg.hpe.com"
 
 // DmgReconciler reconciles a Dmg object
 type DmgReconciler struct {
@@ -71,8 +76,49 @@ func (r *DmgReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	// Expand the context with cancel and store it in the map so the cancel function can be used in
-	// another reconciler loop. Also add NamespacedName so we can retrieve the resource.
+	if !dmg.GetDeletionTimestamp().IsZero() {
+		if err := r.cancel(ctx, dmg); err != nil {
+			return ctrl.Result{}, err
+		}
+
+		if controllerutil.ContainsFinalizer(dmg, finalizer) {
+			controllerutil.RemoveFinalizer(dmg, finalizer)
+
+			if err := r.Update(ctx, dmg); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+
+		return ctrl.Result{}, nil
+	}
+
+	if !controllerutil.ContainsFinalizer(dmg, finalizer) {
+		controllerutil.AddFinalizer(dmg, finalizer)
+		if err := r.Update(ctx, dmg); err != nil {
+			return ctrl.Result{}, err
+		}
+
+		// An update here will cause the reconciler to run again once
+		// k8s has recorded the resource it its database.
+		return ctrl.Result{}, nil
+	}
+
+	// Handle cancellation.
+	if dmg.Spec.Cancel {
+		if err := r.cancel(ctx, dmg); err != nil {
+			return ctrl.Result{}, err
+		}
+
+		return ctrl.Result{}, nil
+	}
+
+	if dmg.Status.Status == daosv1alpha1.DmgConditionTypeFinished || dmg.Status.Status == daosv1alpha1.DmgConditionTypeRunning {
+		return ctrl.Result{}, nil
+	}
+
+	// Expand the context with cancel and store it in the map so
+	// the cancel function can be used in another reconciler loop.
+	// Also add NamespacedName so we can retrieve the resource.
 	ctxCancel, cancel := context.WithCancel(ctx)
 	r.contexts.Store(dmg.Name, dmgCancelContext{
 		ctx:    ctxCancel,
@@ -81,20 +127,46 @@ func (r *DmgReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 
 	cmdStr, cmdArgs := getCmdAndArgs(dmg.Spec.Cmd)
 	cmd := exec.CommandContext(ctxCancel, cmdStr, cmdArgs...)
-
-	cmdStatus := cmd.String()
-	dmg.Status.ExitStatus = cmdStatus
+	dmg.Status.Status = daosv1alpha1.DmgConditionTypeRunning
+	log.Info("Running Command", "cmd", dmg.Spec.Cmd)
 
 	if err := r.Status().Update(ctx, dmg); err != nil {
-		return ctrl.Result{}, err
+		log.Error(err, "unable to update status")
+		return ctrl.Result{}, nil
 	}
 
-	stdOutstdErr, err := cmd.CombinedOutput()
-	log.Info("StdOutStdErr", "output", string(stdOutstdErr))
-	if err != nil {
-		log.Error(err, "error from cmd", "cmd", dmg.Spec.Cmd)
-		return ctrl.Result{}, nil // nil, because we're not ready to loop
-	}
+	go func() {
+		// Start the command.
+		combinedOutBuf, err := cmd.CombinedOutput()
+
+		if errors.Is(ctxCancel.Err(), context.Canceled) {
+			log.Error(err, "command operation cancelled", "output", string(combinedOutBuf))
+		} else if err != nil {
+			log.Error(err, "error from cmd", "cmd", dmg.Spec.Cmd, "output", string(combinedOutBuf))
+		} else {
+			log.Info("completed command", "cmd", dmg.Spec.Cmd, "output", string(combinedOutBuf))
+		}
+
+		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			dmg := &daosv1alpha1.Dmg{}
+			if getErr := r.Get(ctx, req.NamespacedName, dmg); getErr != nil {
+				return getErr
+			}
+			dmg.Status.Status = daosv1alpha1.DmgConditionTypeFinished
+			dmg.Status.Output = string(combinedOutBuf)
+
+			if err != nil {
+				dmg.Status.ExitStatus = err.Error()
+			}
+
+			return r.Status().Update(ctx, dmg)
+		})
+		if retryErr != nil {
+			log.Error(retryErr, "go-routine failed to update dmg status with completion")
+		}
+
+		r.contexts.Delete(dmg.Name)
+	}()
 
 	return ctrl.Result{}, nil
 }
@@ -110,6 +182,24 @@ func getCmdAndArgs(cmdArgs string) (string, []string) {
 	}
 
 	return cmd, args
+}
+
+func (r *DmgReconciler) cancel(ctx context.Context, dmg *daosv1alpha1.Dmg) error {
+	log := log.FromContext(ctx)
+
+	storedCancelContext, found := r.contexts.LoadAndDelete(dmg.Name)
+	if !found {
+		return nil // Already completed or cancelled?
+	}
+
+	cancelContext := storedCancelContext.(dmgCancelContext)
+	log.Info("Cancelling operation")
+	cancelContext.cancel()
+	<-cancelContext.ctx.Done()
+
+	// Nothing more to do; the go routine that is executing the command
+	// will exit and the status will be recorded at that time.
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

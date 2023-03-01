@@ -33,15 +33,35 @@ type DmgSpec struct {
 
 	// Cmd is the "dmg" command to execute
 	Cmd string `json:"cmd,omitempty"`
+
+	// Set to true if the command operation should be canceled.
+	// +kubebuilder:default:=false
+	Cancel bool `json:"cancel,omitempty"`
 }
+
+// Types describing the various command status conditions.
+// +kubebuilder:validation:Enum:=Running;Finished
+type DmgConditionType string
+
+const (
+	DmgConditionTypeRunning  DmgConditionType = "Running"
+	DmgConditionTypeFinished DmgConditionType = "Finished"
+	// NOTE: You must ensure any new value is added to the above kubebuilder validation enum.
+)
 
 // DmgStatus defines the observed state of Dmg
 type DmgStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
+	// Output contains any output from the command
+	Output string `json:"output"`
+
 	// ExitStatus contains the dmg command's process exit status
 	ExitStatus string `json:"exitStatus"`
+
+	// Status is the state of the dmg command
+	Status DmgConditionType `json:"status"`
 }
 
 //+kubebuilder:object:root=true

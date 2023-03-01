@@ -3,12 +3,12 @@ kind: Dmg
 metadata:
   labels:
     app.kubernetes.io/name: dmg
-    app.kubernetes.io/instance: ls
+    app.kubernetes.io/instance: long
     app.kubernetes.io/part-of: olivetree
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/created-by: olivetree
-  name: ls
+  name: long
 spec:
-  cmd: ls /hello_world
+  cmd: sleep 300
   #cmd: ls /tmp
 
