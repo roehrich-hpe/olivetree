@@ -77,6 +77,7 @@ func (r *DmgReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	}
 
 	if !dmg.GetDeletionTimestamp().IsZero() {
+		log.Info("deleting resource")
 		if err := r.cancel(ctx, dmg); err != nil {
 			return ctrl.Result{}, err
 		}
