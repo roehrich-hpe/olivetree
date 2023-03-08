@@ -1,0 +1,21 @@
+access_points: ['verde-server-01', 'verde-server-02', 'verde-server-03']
+port: 10001
+provider: ofi+tcp
+disable_hugepages: true
+control_log_file: /tmp/daos_server.log
+helper_log_file: /tmp/daos_admin.log
+telemetry_port: 9191
+engines:
+-
+  targets: 1
+  nr_xs_helpers: 0
+  pinned_numa_node: 0
+  fabric_iface: eth0
+  fabric_iface_port: 31416
+  log_file: /tmp/daos_engine.0.log
+  storage:
+  -
+    scm_mount: /mnt/daos/1
+    class: ram
+    scm_size: 12
+

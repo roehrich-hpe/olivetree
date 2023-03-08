@@ -1,0 +1,3 @@
+access_points: ['verde-server-01', 'verde-server-02', 'verde-server-03']
+port: 10001
+

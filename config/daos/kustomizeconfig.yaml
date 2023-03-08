@@ -1,0 +1,9 @@
+nameReference:
+- kind: ConfigMap
+  version: v1
+  # Tell kustomize that the name it generates for the ConfigMap should be
+  # copied into this location in the Deployment.
+  fieldSpecs:
+  - path: spec/template/spec/volumes/0/name
+    kind: Deployment
+
