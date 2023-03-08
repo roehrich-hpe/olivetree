@@ -2,9 +2,5 @@
 Toy controller for Zack and Dean
 
 
-For Talos, relax the security policy on our namespace, after it has been created:
-
-```console
-kubectl label ns olivetree-system pod-security.kubernetes.io/enforce=privileged
-```
+For Talos, we relax the security policy on our namespace by patching it to add the `pod-security.kubernetes.io/enforce=privileged` annotation.  This is in `config/manager/`.
 
