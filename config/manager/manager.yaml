@@ -65,11 +65,11 @@ spec:
         # seccompProfile:
         #   type: RuntimeDefault
       volumes:
-      - name: daos-server
+      - name: daos-ymls
         configMap:
           # The config/daos/kustomizeconfig.yaml tells kustomize how to
           # replace this with the generated name of the ConfigMap.
-          name: daos-ymls
+          name: daos-config
       containers:
       - command:
         - /manager
@@ -79,8 +79,8 @@ spec:
         imagePullPolicy: Always
         name: manager
         volumeMounts:
-        - name: daos-server
-          mountPath: /etc/daos
+        - name: daos-ymls
+          mountPath: /etc/daos-config
         securityContext:
           privileged: true
           runAsUser: 0
