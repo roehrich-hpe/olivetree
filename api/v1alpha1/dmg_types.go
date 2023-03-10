@@ -20,6 +20,17 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	// A label for pods running DAOS.
+	DAOSLabel = "dmg.hpe.com/daos"
+
+	// A label value for pods running DAOS server.
+	DAOSServerLabel = "server"
+
+	// The namespace for our DAOS controllers.
+	DAOSPodNamespace = "olivetree-system"
+)
+
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 

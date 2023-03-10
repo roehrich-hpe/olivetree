@@ -30,6 +30,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	daosv1alpha1 "github.com/roehrich-hpe/olivetree/api/v1alpha1"
 	"github.com/roehrich-hpe/olivetree/internal/controller"
@@ -48,15 +49,23 @@ func init() {
 	//+kubebuilder:scaffold:scheme
 }
 
+const (
+	nameNodeLocalController   = "node"
+	nameSystemLevelController = "system"
+)
+
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
+	var controller string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	flag.StringVar(&controller, "controller", "node", "The controller type to run (node, system)")
+
 	opts := zap.Options{
 		Development: true,
 	}
@@ -65,13 +74,19 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
+	oliveCtrl := newOliveControllerInitializer(controller)
+	if oliveCtrl == nil {
+		setupLog.Info("unsupported controller type", "controller", controller)
+		os.Exit(1)
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
 		Port:                   9443,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "f2f5e1f0.hpe.com",
+		LeaderElectionID:       oliveCtrl.electionID() + ".hpe.com",
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
 		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly
@@ -89,13 +104,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controller.DmgReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Dmg")
+	if err := oliveCtrl.setupReconcilers(mgr); err != nil {
+		setupLog.Error(err, "unable to create olive controller reconciler", "controller", oliveCtrl.getType())
 		os.Exit(1)
 	}
+
 	//+kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
@@ -112,4 +125,54 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+}
+
+// oliveControllerInitializer defines an interface to initialize one of the
+// Olive Controller types.
+type oliveControllerInitializer interface {
+	getType() string
+	setupReconcilers(manager.Manager) error
+	electionID() string
+}
+
+// newOliveControllerInitializer creates a new Olive Controller Initializer
+// for the given type, or nil if not found.
+func newOliveControllerInitializer(typ string) oliveControllerInitializer {
+	switch typ {
+	case nameNodeLocalController:
+		return &nodeLocalController{}
+	case nameSystemLevelController:
+		return &systemController{}
+	}
+	return nil
+}
+
+// nodeLocalController defines initializer for the per-node Olive Controller
+type nodeLocalController struct{}
+
+func (*nodeLocalController) getType() string    { return nameNodeLocalController }
+func (*nodeLocalController) electionID() string { return "f2f5e1f0" }
+
+func (c *nodeLocalController) setupReconcilers(mgr manager.Manager) error {
+	err := (&controller.DmgReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr)
+
+	return err
+}
+
+// systemController defines initializer for the system-level Olive Controller
+type systemController struct{}
+
+func (*systemController) getType() string    { return nameSystemLevelController }
+func (*systemController) electionID() string { return "f2f5e1f1" }
+
+func (c *systemController) setupReconcilers(mgr manager.Manager) error {
+	err := (&controller.GardenerReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr)
+
+	return err
 }

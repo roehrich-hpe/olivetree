@@ -6,6 +6,20 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods/status
+  verbs:
+  - get
+- apiGroups:
   - daos.hpe.com
   resources:
   - dmgs
@@ -27,6 +41,32 @@ rules:
   - daos.hpe.com
   resources:
   - dmgs/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - daos.hpe.com
+  resources:
+  - gardeners
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - daos.hpe.com
+  resources:
+  - gardeners/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - daos.hpe.com
+  resources:
+  - gardeners/status
   verbs:
   - get
   - patch

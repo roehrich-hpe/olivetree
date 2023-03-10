@@ -1,0 +1,13 @@
+apiVersion: daos.hpe.com/v1alpha1
+kind: Gardener
+metadata:
+  labels:
+    app.kubernetes.io/name: gardener
+    app.kubernetes.io/instance: gardener-sample
+    app.kubernetes.io/part-of: olivetree
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: olivetree
+  name: gardener-sample
+spec:
+  cmd: sleep 10
+
