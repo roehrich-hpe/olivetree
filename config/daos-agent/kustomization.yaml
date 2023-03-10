@@ -2,11 +2,9 @@ configMapGenerator:
 # Kustomize will add a hash to the end of this name, and the
 # kustomizeconfig.yaml will tell kustomize how to insert that generated name
 # into the Daemonset's "volumes" entry.
-- name: daos-config
+- name: daos-agent-config
   namespace: system
   files:
-  - daos_server.yml
   - daos_agent.yml
-  - daos_control.yml
 
 
